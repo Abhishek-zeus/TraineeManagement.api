@@ -24,7 +24,12 @@ namespace TraineeManagement.myapp.Controller
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            return Ok(service.GetById(id));
+            Trainee trainee = service.GetById(id);
+            if(trainee == null)
+            {
+                return NotFound();
+            }
+            return Ok(trainee);
         }
 
         [HttpPost]

@@ -111,3 +111,4 @@
 /mnt/d/TraineeManagement/myapp/obj/Debug/net10.0/myapp.pdb
 /mnt/d/TraineeManagement/myapp/obj/Debug/net10.0/myapp.genruntimeconfig.cache
 /mnt/d/TraineeManagement/myapp/obj/Debug/net10.0/ref/myapp.dll
+/mnt/d/TraineeManagement/myapp/obj/Debug/net10.0/myapp.sourcelink.json
