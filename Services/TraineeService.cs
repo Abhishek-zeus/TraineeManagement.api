@@ -80,7 +80,7 @@ namespace TraineeManagement.myapp.Services
                 t.FirstName!.Contains(search) ||
                 t.LastName!.Contains(search) ||
                 t.Email!.Contains(search) ||
-                t.TechStack!.Contains(search)
+                t.TechStack.Contains(search)
             ).ToListAsync();
         }
     }

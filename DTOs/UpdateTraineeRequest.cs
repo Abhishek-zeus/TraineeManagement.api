@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TraineeManagement.myapp.Models;
 
 namespace TraineeManagement.myapp.DTOs
 {
@@ -19,6 +20,7 @@ namespace TraineeManagement.myapp.DTOs
         [Required(ErrorMessage="TechStack is required")]
         public String? techStack{get;set;}
 
+        [EnumDataType(typeof(ProjectStatus),ErrorMessage="Invalid Status, Allowed are Active, Inactive or Completed")]
         [Required(ErrorMessage="Status is required")]
         public String? status{get;set;}
     }
