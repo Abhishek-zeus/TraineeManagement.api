@@ -1,4 +1,7 @@
 using TraineeManagement.myapp.Services;
+using Microsoft.EntityFrameworkCore;
+using TraineeManagement.myapp.Data;
+
 var builder = WebApplication.CreateBuilder(args);
  
 // Add services to the container.
@@ -8,7 +11,15 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApiDocument();
 
 //Dependency Injection
-builder.Services.AddSingleton<ITraineeService,TraineeService>(); 
+// builder.Services.AddSingleton<ITraineeService,TraineeService>(); 
+
+//EFCORE implementation
+builder.Services.AddDbContext<AppDbContext>(
+    options => options.UseInMemoryDatabase("TraineeManagementDb")
+);
+
+//Dependency Injection
+builder.Services.AddScoped<ITraineeService,TraineeService>();
 
 var app = builder.Build();
  

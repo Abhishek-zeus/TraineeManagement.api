@@ -1,36 +1,48 @@
+using Microsoft.EntityFrameworkCore;
 using TraineeManagement.myapp.Models;
+using TraineeManagement.myapp.Data;
 
 namespace TraineeManagement.myapp.Services
 {
     public class TraineeService : ITraineeService
     {
-        private static List<Trainee> trainees = new();
+        //Inject DbContext
+        private readonly AppDbContext context;
+        public TraineeService(AppDbContext _context)
+        {
+            context = _context;
+        }
+
         private static int nextId = 1;
 
-        public List<Trainee> GetAll()
+        //added async and await that return Task<>
+
+        public async Task<List<Trainee>> GetAll()
         {
-            return trainees;
+            return await context.Trainees.ToListAsync();
         }
 
-        public Trainee GetById(int id)
+        public async Task<Trainee> GetById(int id)
         {
-            return trainees.FirstOrDefault(t => t.id == id);
+            return await context.Trainees.FindAsync(id);
         }
 
-        public Trainee Create(Trainee trainee)
+        public async Task<Trainee> Create(Trainee trainee)
         {
             trainee.id = nextId++;
             trainee.CreatedDate = DateTime.Now;
             trainee.UpdatedDate = DateTime.Now;
 
-            trainees.Add(trainee);
+            await context.Trainees.AddAsync(trainee);
+            await context.SaveChangesAsync();
+
             return trainee;
         }
 
 
-        public Trainee Update(int id, Trainee trainee)
+        public async Task<Trainee> Update(int id, Trainee trainee)
         {
-            var existing = trainees.FirstOrDefault(t => t.id == id);
+            var existing = await context.Trainees.FindAsync(id);
             if(existing == null){
                 return null;
             }
@@ -40,18 +52,36 @@ namespace TraineeManagement.myapp.Services
             existing.TechStack = trainee.TechStack;
             existing.UpdatedDate = DateTime.Now;
 
+            await context.SaveChangesAsync();
+            
             return existing;
         }
 
 
-        public Trainee Delete(int id)
+        public async Task<Trainee> Delete(int id)
         {
-            var trainee = trainees.FirstOrDefault(t => t.id == id);
+            var trainee = await context.Trainees.FindAsync(id);
             if(trainee == null){
                 return null;
             }
-            trainees.Remove(trainee);
+
+            //only remove does not use await async
+            context.Trainees.Remove(trainee);
+            await context.SaveChangesAsync();
+
             return trainee;
+        }
+
+
+        public async Task<List<Trainee>> Search(String search)
+        {
+            return await context.Trainees.Where(
+                t =>
+                t.FirstName!.Contains(search) ||
+                t.LastName!.Contains(search) ||
+                t.Email!.Contains(search) ||
+                t.TechStack!.Contains(search)
+            ).ToListAsync();
         }
     }
 }

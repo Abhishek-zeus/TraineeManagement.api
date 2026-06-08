@@ -17,14 +17,22 @@ namespace TraineeManagement.myapp.Controller
         }
 
         [HttpGet]
-        public IActionResult GetAll(){
-            return Ok(service.GetAll());
+        public async Task<IActionResult> GetAll(String? search){
+            if(!String.IsNullOrEmpty(search))
+            {
+                List<Trainee> trainees = await service.Search(search);
+                if(trainees.Count == 0){
+                    return NotFound();
+                }
+                return Ok(trainees);
+            }
+            return Ok(await service.GetAll());
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetById(int id)
+        public async Task<IActionResult> GetById(int id)
         {
-            Trainee trainee = service.GetById(id);
+            Trainee trainee = await service.GetById(id);
             if(trainee == null)
             {
                 return NotFound();
@@ -33,7 +41,7 @@ namespace TraineeManagement.myapp.Controller
         }
 
         [HttpPost]
-        public IActionResult Create(CreateTraineeRequest request)
+        public async Task<IActionResult> Create(CreateTraineeRequest request)
         {
             var trainee = new Trainee
             {
@@ -44,7 +52,7 @@ namespace TraineeManagement.myapp.Controller
                 Status = request.status
             };
 
-            service.Create(trainee);
+            await service.Create(trainee);
 
             return CreatedAtAction(
                 nameof(GetById),
@@ -53,7 +61,7 @@ namespace TraineeManagement.myapp.Controller
         }
 
         [HttpPut("{id}")]
-        public IActionResult Update(int id, UpdateTraineeRequest request)
+        public async Task<IActionResult> Update(int id, UpdateTraineeRequest request)
         {
             var trainee = new Trainee
             {
@@ -64,17 +72,17 @@ namespace TraineeManagement.myapp.Controller
                 Status = request.status
             };
             
-            if(service.Update(id,trainee) == null){
+            if(await service.Update(id,trainee) == null){
                 return NotFound();
             }
             
-            return Ok(service.Update(id,trainee));
+            return Ok(await service.Update(id,trainee));
         }
 
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id){
-            Trainee trainee = service.Delete(id);
+        public async Task<IActionResult> Delete(int id){
+            Trainee? trainee = await service.Delete(id);
             if(trainee == null){
                 return NotFound();
             }
