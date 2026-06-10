@@ -14,12 +14,25 @@ builder.Services.AddOpenApiDocument();
 // builder.Services.AddSingleton<ITraineeService,TraineeService>(); 
 
 //EFCORE implementation
+// builder.Services.AddDbContext<AppDbContext>(
+//     options => options.UseInMemoryDatabase("TraineeManagementDb")
+// );
+
+
+////MYSQL implementation
+//connection mentioned in appsettings.json
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//connect to that connection
 builder.Services.AddDbContext<AppDbContext>(
-    options => options.UseInMemoryDatabase("TraineeManagementDb")
+    options => 
+    options.UseMySQL(connectionString)
 );
+
+
 
 //Dependency Injection
 builder.Services.AddScoped<ITraineeService,TraineeService>();
+builder.Services.AddScoped<IUserService,UserService>();
 
 var app = builder.Build();
  
