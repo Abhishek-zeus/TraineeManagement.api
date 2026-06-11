@@ -7,6 +7,6 @@ namespace TraineeManagement.myapp.Services
     {
         public Task<List<User>> GetAll();
         public Task<User> RegisterUser(CreateUserRequest request);
-        public Task<User> LoginUser(LoginRequest request);
+        public Task<LoginResponse> LoginUser(LoginRequest request);
     }
 }

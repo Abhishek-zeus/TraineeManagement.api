@@ -1,32 +1,38 @@
 using Microsoft.AspNetCore.Mvc;
 using TraineeManagement.myapp.Models;
 using TraineeManagement.myapp.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using TraineeManagement.myapp.Services;
 
 namespace TraineeManagement.myapp.Controller
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class TraineeController : ControllerBase
     {
         // for dependency injection
         private readonly ITraineeService service;
-        public TraineeController(ITraineeService service)
+        private readonly ILogger logger;
+        public TraineeController(ITraineeService service, ILogger logger)
         {
             this.service = service;
+            this.logger = logger;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll(String? search){
-            if(!String.IsNullOrEmpty(search))
+        public async Task<IActionResult> GetAll(int? pageNumber, int? pageSize, String? search, String? status){
+            if(!String.IsNullOrEmpty(search) || !String.IsNullOrEmpty(status))
             {
-                List<Trainee> trainees = await service.Search(search);
-                if(trainees.Count == 0){
+                var pagedResult = await service.Search(pageNumber,pageSize, search, status);
+                if(pagedResult.data.Count == 0){
+                    logger.LogWarning("No Trainee found");
                     return NotFound();
                 }
-                return Ok(trainees);
+                return Ok(pagedResult);
             }
-            return Ok(await service.GetAll());
+            var allResult = await service.GetAll(pageNumber,pageSize);
+            return Ok(allResult);
         }
 
         [HttpGet("{id}")]
@@ -35,6 +41,7 @@ namespace TraineeManagement.myapp.Controller
             Trainee trainee = await service.GetById(id);
             if(trainee == null)
             {
+                logger.LogWarning("Trainee not found {id}",id);
                 return NotFound();
             }
             return Ok(trainee);
@@ -73,6 +80,7 @@ namespace TraineeManagement.myapp.Controller
             };
             
             if(await service.Update(id,trainee) == null){
+                logger.LogWarning("Trainee not found {id}",id);
                 return NotFound();
             }
             
@@ -84,6 +92,7 @@ namespace TraineeManagement.myapp.Controller
         public async Task<IActionResult> Delete(int id){
             Trainee? trainee = await service.Delete(id);
             if(trainee == null){
+                logger.LogWarning("Trainee not found {id}",id);
                 return NotFound();
             }
             return NoContent();

@@ -30,7 +30,7 @@ namespace TraineeManagement.myapp.Controllers
             {
                 return Unauthorized();
             }
-            return Ok("Login Successful");
+            return Ok(user);
         }
 
         [HttpGet]

@@ -1,14 +1,14 @@
 using TraineeManagement.myapp.Models;
-
+using TraineeManagement.myapp.DTOs;
 namespace TraineeManagement.myapp.Services
 {
     public interface ITraineeService
     {
-        public Task<List<Trainee>> GetAll();
+        public Task<PagedResponse> GetAll(int? pageNumber, int? pageSize);
         public Task<Trainee?> GetById(int id);
         public Task<Trainee> Create(Trainee trainee);
         public Task<Trainee> Update(int id, Trainee trainee);
         public Task<Trainee> Delete(int id);
-        public Task<List<Trainee>> Search(String search);
+        public Task<PagedResponse> Search(int? pageNumber, int? pageSize, String? search, String? status);
     }
 }
