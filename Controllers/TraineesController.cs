@@ -13,8 +13,8 @@ namespace TraineeManagement.myapp.Controller
     {
         // for dependency injection
         private readonly ITraineeService service;
-        private readonly ILogger logger;
-        public TraineeController(ITraineeService service, ILogger logger)
+        private readonly ILogger<TraineeController> logger;
+        public TraineeController(ITraineeService service, ILogger<TraineeController> logger)
         {
             this.service = service;
             this.logger = logger;

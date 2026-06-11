@@ -10,8 +10,8 @@ namespace TraineeManagement.myapp.Services
     {
         //Inject DbContext and Logger
         private readonly AppDbContext context;
-        private readonly ILogger logger;
-        public TraineeService(AppDbContext _context, ILogger logger)
+        private readonly ILogger<TraineeService> logger;
+        public TraineeService(AppDbContext _context, ILogger<TraineeService> logger)
         {
             context = _context;
             this.logger = logger;
