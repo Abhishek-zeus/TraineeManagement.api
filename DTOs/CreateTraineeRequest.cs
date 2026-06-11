@@ -1,6 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using TraineeManagement.myapp.Models;
 
+/*
+TODO:
+1) Remove ? from the variables if they are required fields
+2) For status use enum instead of string
+
+*/
+
 namespace TraineeManagement.myapp.DTOs
 {
     public class CreateTraineeRequest

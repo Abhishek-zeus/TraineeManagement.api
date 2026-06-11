@@ -21,6 +21,12 @@ namespace TraineeManagement.myapp.Services
 
         //added async and await that return Task<>
 
+        /*
+        TODO: 
+        1) Replace CreateTraineeRequest with some dto it is confusing to use request dto in response
+        2) Use generatic paged response
+
+        */
         public async Task<PagedResponse> GetAll(int? pageNumber, int? pageSize)
         { 
 
@@ -33,6 +39,7 @@ namespace TraineeManagement.myapp.Services
                 // if any any value is missing
 
                 data = await context.Trainees.OrderBy(p => p.id).
+                // TODO: Extract similar logic in mapper
                 Select(t => new CreateTraineeRequest
                 {
                     firstName = t.FirstName,
@@ -66,10 +73,13 @@ namespace TraineeManagement.myapp.Services
 
         public async Task<Trainee> Create(Trainee trainee)
         {
+            // TODO: Add auto increment at database level and remove this logic from heres
             trainee.id = nextId++;
+            // TODO: Use UTC time and store in same format across the application
             trainee.CreatedDate = DateTime.Now;
             trainee.UpdatedDate = DateTime.Now;
 
+            // TODO: Add validation for duplicate email and other fields as necessary and return appropriate response.
             await context.Trainees.AddAsync(trainee);
             await context.SaveChangesAsync();
             logger.LogInformation("Trainee Created with Id {id}",trainee.id);

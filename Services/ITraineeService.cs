@@ -1,5 +1,11 @@
 using TraineeManagement.myapp.Models;
 using TraineeManagement.myapp.DTOs;
+
+/*
+TODO:
+1) Store interface in seperate folder
+
+*/
 namespace TraineeManagement.myapp.Services
 {
     public interface ITraineeService

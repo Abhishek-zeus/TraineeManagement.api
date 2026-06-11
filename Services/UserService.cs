@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace TraineeManagement.myapp.Services
 {
+    // TODO: Rename this service to match the controller name and its functionality, for example AuthService
     public class UserService : IUserService
     {
         private readonly AppDbContext context;
@@ -27,10 +28,12 @@ namespace TraineeManagement.myapp.Services
 
         public async Task<User> RegisterUser(CreateUserRequest request)
         {
+            // TODO: Add validation to check if user with same username or email already exists and return appropriate response.
             var user = new User{
                 Username = request.Username,
                 Email = request.Email,
                 Role = request.Role,
+                // TODO: Store time in same format and timezone across the application, preferably in UTC.
                 CreatedDate = DateTime.Now,
                 UpdatedDate = DateTime.Now
             };
@@ -42,11 +45,13 @@ namespace TraineeManagement.myapp.Services
             await context.Users.AddAsync(user);
             await context.SaveChangesAsync();
 
+            // TODO: Instead of returning entire user object, return only necessary details or a DTO.
             return user;
         }
 
         public async Task<LoginResponse> LoginUser(LoginRequest request)
         {
+            //TODO: Use await for db queries and use async version of method
             var user = context.Users.FirstOrDefault(
                 u => u.Username == request.Username
             );
@@ -64,6 +69,7 @@ namespace TraineeManagement.myapp.Services
             return new LoginResponse
             {
                 Token = token,
+                // TODO: Store expiry time in configuration and use it here instead of hardcoding.
                 ExpiresIn = 3600,
                 User = new UserResponse
                 {
@@ -74,6 +80,7 @@ namespace TraineeManagement.myapp.Services
             };
         }
 
+        // TODO: This method can be moved to a separate utility class for token generation and management.
         public String GenerateToken(User user)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]));

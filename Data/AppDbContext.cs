@@ -2,6 +2,12 @@
 using Microsoft.EntityFrameworkCore;
 using TraineeManagement.myapp.Models;
 
+/*
+TODO:
+
+1) Add indexing and constraints to the database tables if not already done
+
+*/
 namespace TraineeManagement.myapp.Data
 {
     public class AppDbContext : DbContext

@@ -1,3 +1,10 @@
+/*
+TODO:
+1) Pagination inputs should always be defined (use default values instead)
+2) Create Generic PagedResponse<T> class - Ref: https://learn.microsoft.com/en-us/aspnet/core/data/ef-mvc/sort-filter-page?view=aspnetcore-10.0
+
+*/
+
 namespace TraineeManagement.myapp.DTOs
 {
     public class PagedResponse

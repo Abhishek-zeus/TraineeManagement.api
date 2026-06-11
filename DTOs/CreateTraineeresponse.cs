@@ -1,3 +1,11 @@
+/*
+
+TODO: 
+
+1) Use PascalCase for all property names
+2) Remove nullable (?) from response fields unless absolutely necessary
+3) Change 'status' from string to ProjectStatus enum
+*/
 namespace TraineeManagement.myapp.DTOs
 {
     public class CreateTraineeResponse

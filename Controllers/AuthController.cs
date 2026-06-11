@@ -3,6 +3,13 @@ using TraineeManagement.myapp.Models;
 using TraineeManagement.myapp.Services;
 using TraineeManagement.myapp.DTOs;
 
+/* 
+TODO:
+1) Replace return type with appropriate response type instead of IActionResult
+2) Separate out the global variable with _ like _service and _logger
+
+*/
+
 namespace TraineeManagement.myapp.Controllers 
 {
     [ApiController]
@@ -15,6 +22,12 @@ namespace TraineeManagement.myapp.Controllers
             this.service = service;
         }
 
+        /*
+        TODO:
+        1) Add validation for request body, if any required field is missing return bad request with appropriate message
+        2) Response code should be 201 for successful registration instead of 200
+
+        */
         [HttpPost("signup")]
         public async Task<IActionResult> RegisterUser(CreateUserRequest request)
         {
