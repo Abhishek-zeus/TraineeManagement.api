@@ -18,12 +18,14 @@ namespace TraineeManagement.myapp.Controllers
     {
         private readonly ISubmissionService _service;
         private readonly ISubmissionFileService _submissionFileService;
+        private readonly IProcessingJobService _processingJobService;
         private readonly IMessagePublisher _messagePublisher;
-        public SubmissionController(ISubmissionService service, ISubmissionFileService submissionFileService, IMessagePublisher messagePublisher)
+        public SubmissionController(ISubmissionService service, IProcessingJobService processingJobService, ISubmissionFileService submissionFileService, IMessagePublisher messagePublisher)
         {
             _service = service;
             _submissionFileService = submissionFileService;
             _messagePublisher = messagePublisher;
+            _processingJobService = processingJobService;
         }
 
         [HttpPost]
@@ -84,15 +86,30 @@ namespace TraineeManagement.myapp.Controllers
                     FileId = response.Id
                 };
 
+
+                var job = await _processingJobService.CreateQueuedJobAsync(queueMessage.MessageId, correlationId, submissionId, response.Id, cancellationToken);
+
+
+
                 //send directly to the queue
-                _messagePublisher.PublishSubmissionTask(queueMessage);
+                try
+                {
+                    _messagePublisher.PublishSubmissionTask(queueMessage);
+                }
+                catch (Exception publishEx)
+                {
+                    //If queueing fails, immediately mark the database job row as "Failed"
+                    await _processingJobService.UpdateJobToFailedAsync(job.Id, $"Queue publishing failed: {publishEx.Message}", cancellationToken);
+                    return StatusCode(500, new { message = "File uploaded, but failed to queue the background processing job.", error = publishEx.Message });
+                }
 
                 // return 202 Accepted
                 return Accepted(new
                 {
                     message = "File Uploaded successfully. Processing job queued",
                     fileId = response.Id,
-                    correlationId = correlationId
+                    correlationId = correlationId,
+                    processingJobId = job.Id
                 });
 
             }

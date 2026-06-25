@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using TraineeManagement.myapp.Interfaces;
 using Microsoft.AspNetCore.Http.Features;
 using System.Text;
+using System.Text.Json.Serialization;
 using TraineeManagement.myapp.Utility;
 using DotNetEnv;
 
@@ -13,7 +14,11 @@ Env.Load(); // Loads the .env file into environment variables for Jwt
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
 
 // Simple NSwag
 // builder.Services.AddOpenApiDocument();
@@ -58,7 +63,7 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<ISubmissionFileService, SubmissionFileService>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
-
+builder.Services.AddScoped<IProcessingJobService,ProcessingJobService>();
 
 
 //Enable Multipart form data needed for file uploads

@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="myapp/myapp.csproj" />
-  <Project Path="SubmissionProcessor.Worker/SubmissionProcessor.Worker.csproj" />
-</Solution>

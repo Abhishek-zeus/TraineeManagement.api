@@ -8,5 +8,7 @@ namespace TraineeManagement.myapp.Utility
         public string Password {get; set;} = "guest";
         public string QueueName {get; set;} = "submission-processing";
 
+        public string DeadLetterExchange {get; set;} = "submission-processing.dlx";
+        public string FailedQueue {get; set;} = "submission-processing-failed";
     }
 }

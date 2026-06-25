@@ -35,6 +35,7 @@ namespace TraineeManagement.myapp.Data
         public DbSet<Submission> Submissions { get; set;}
         public DbSet<Review> Reviews { get; set;}
         public DbSet<SubmissionFile> SubmissionFiles {get; set;}
+        public DbSet<ProcessingJob> ProcessingJobs {get; set;}
 
 
 
@@ -130,6 +131,10 @@ namespace TraineeManagement.myapp.Data
                 .HasOne(t => t.LearningTask)
                 .WithMany()
                 .HasForeignKey(t => t.LearningTaskId);
+
+            modelBuilder.Entity<ProcessingJob>()
+            .Property(p => p.Status)
+            .HasConversion<string>();
         }
 
     }

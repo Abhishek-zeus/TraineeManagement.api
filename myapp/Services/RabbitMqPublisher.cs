@@ -1,6 +1,6 @@
-using System.Text; 
-using System.Text.Json; 
-using Microsoft.Extensions.Options; 
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using TraineeManagement.myapp.DTOs;
 using TraineeManagement.myapp.Interfaces;
@@ -23,10 +23,10 @@ namespace TraineeManagement.myapp.Services
             // s1: Establish Connection Factory settings - Fill form
             var factory = new ConnectionFactory
             {
-              HostName = _settings.HostName,
-              Port = _settings.Port,
-              UserName = _settings.UserName,  
-              Password = _settings.Password
+                HostName = _settings.HostName,
+                Port = _settings.Port,
+                UserName = _settings.UserName,
+                Password = _settings.Password
             };
 
             //s2: Open connections to the broker - create a pipeline and inside that a channel
@@ -34,13 +34,45 @@ namespace TraineeManagement.myapp.Services
             _channel = _connection.CreateModel();
 
             //s3: Declare our queue as DURABLE so it survives restarts 
+            //step3a : the dead letter exchange
+            _channel.ExchangeDeclare(
+                exchange: _settings.DeadLetterExchange,
+                type: ExchangeType.Direct,
+                durable: true,
+                autoDelete: false
+            );
+
+            //step3b: the failed queue
+            _channel.QueueDeclare(
+                queue: _settings.FailedQueue,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null
+            );
+
+            _channel.QueueBind(
+                queue: _settings.FailedQueue,
+                exchange: _settings.DeadLetterExchange,
+                routingKey: _settings.QueueName
+            );
+
+            //step3c: the main queue
+            var mainQueueArgs = new Dictionary<string, object>
+            {
+                {"x-dead-letter-exchange", _settings.DeadLetterExchange}
+            };
+
             _channel.QueueDeclare(
                 queue: _settings.QueueName,
                 durable: true,
                 exclusive: false,
                 autoDelete: false,
-                arguments: null
-            ) ;
+                arguments: mainQueueArgs
+            );
+
+
+
         }
 
 
@@ -58,8 +90,11 @@ namespace TraineeManagement.myapp.Services
                 //Track the execution chain using headers
                 properties.Headers = new Dictionary<string, object>
                 {
-                  {"CorrelationId", message.CorrelationId}  
+                  {"CorrelationId", message.CorrelationId}
                 };
+
+
+
                 _channel.BasicPublish(
                     exchange: string.Empty, //Default direct routing exchange
                     routingKey: _settings.QueueName,
@@ -67,13 +102,13 @@ namespace TraineeManagement.myapp.Services
                     body: body
                 );
 
-                _logger.LogInformation( "Successfully published to RabbitMQ. MessageId: {MessageId}, CorrelationId: {CorrelationId}",message.MessageId, message.CorrelationId);
+                _logger.LogInformation("Successfully published to RabbitMQ. MessageId: {MessageId}, CorrelationId: {CorrelationId}", message.MessageId, message.CorrelationId);
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to publish message to broker. System will report downstream failure."); 
-                throw; 
+                _logger.LogError(ex, "Failed to publish message to broker. System will report downstream failure.");
+                throw;
             }
         }
 
