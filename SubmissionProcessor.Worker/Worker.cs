@@ -181,6 +181,40 @@ public class Worker : BackgroundService
                     {
                         _logger.LogWarning("Checksum mismatch for FileId: {FileId}. Stored: {Stored}, Recomputed: {Recomputed}", submissionFile.Id, submissionFile.CheckSum, recomputedHash);
                     }
+
+
+                    //New in Day 5: Look up the trainee via directory service
+                    var directoryClient = scope.ServiceProvider.GetRequiredService<ITrainingDirectoryClient>();
+                    var submission = await dbContext.Submissions.FirstOrDefaultAsync(s => s.Id == message.SubmissionId, stoppingToken); //I have submission -> taskAssignmentId now 
+                    if(submission != null)
+                    {
+                        var assignment = await dbContext.TaskAssignments.FirstOrDefaultAsync(a => a.Id == submission.TaskAssignmentId, stoppingToken); // now i have the taskAssignment -> traineeId
+                        if(assignment != null)
+                        {
+                            try
+                            {
+                                var profile = await directoryClient.GetTraineeProfileAsync(assignment.TraineeId, job.CorrelationId, stoppingToken);
+
+                                if(profile != null)
+                                {
+                                    _logger.LogInformation("Trainee profile retrieved. TraineeId: {TraineeId}, Name: {FullName}, CorrelationId: {CorrelationId}", profile.TraineeId, profile.FullName, job.CorrelationId);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Trainee {TraineeId} not found in directory service. Continuing without profile data.", assignment.TraineeId);
+                                }
+                            }
+                            catch(Exception ex)
+                            {
+                                //FallBack behaviour --Polly will handle it
+                                _logger.LogWarning(ex,"Directory service unavailable for TraineeId:{TraineeId}. Proceeding without profile data. JobId: {JobId}", assignment.TraineeId, job.Id);
+                            }
+                            
+                        }
+                    
+                    }
+
+
                     job.Status = ProcessingJobStatus.Completed;
                     job.CompletedDate = DateTime.UtcNow;
                     job.ErrorSummary = null;

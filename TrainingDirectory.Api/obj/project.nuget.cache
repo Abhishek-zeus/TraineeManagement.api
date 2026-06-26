@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "r4RUgtRJ8ZU=",
+  "success": true,
+  "projectFilePath": "/mnt/d/TraineeManagement/TrainingDirectory.Api/TrainingDirectory.Api.csproj",
+  "expectedPackageFiles": [
+    "/home/abhishek/.nuget/packages/microsoft.aspnetcore.openapi/10.0.9/microsoft.aspnetcore.openapi.10.0.9.nupkg.sha512",
+    "/home/abhishek/.nuget/packages/microsoft.openapi/2.0.0/microsoft.openapi.2.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
