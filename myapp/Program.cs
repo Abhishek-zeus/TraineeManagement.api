@@ -1,4 +1,5 @@
 using TraineeManagement.myapp.Services;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using TraineeManagement.myapp.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -6,9 +7,13 @@ using Microsoft.IdentityModel.Tokens;
 using TraineeManagement.myapp.Interfaces;
 using Microsoft.AspNetCore.Http.Features;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using TraineeManagement.myapp.Utility;
 using DotNetEnv;
+using TraineeManagement.myapp.Middleware;
+using TraineeManagement.myapp.HealthChecks;
+using TraineeManagement.myapp.Controllers;
 
 Env.Load(); // Loads the .env file into environment variables for Jwt
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +35,20 @@ builder.Services.AddControllers()
 // builder.Services.AddDbContext<AppDbContext>(
 //     options => options.UseInMemoryDatabase("TraineeManagementDb")
 // );
+
+
+builder.Services.AddHttpClient();   //for TrainingDirectoryHealthCheck's IHttpClientFactory
+
+// ----- HEALTH CHECKS -----
+builder.Services.AddHealthChecks()
+    .AddCheck<MySqlHealthCheck>("mysql", tags: new[] {"ready"})
+    .AddCheck<RedisHealthCheck>("redis", tags: new[] {"ready"})
+    .AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: new[] {"ready"})
+    .AddCheck<TrainingDirectoryHealthCheck>("training-directory", tags: new[] {"ready"});
+
+
+
+
 
 
 ////MYSQL implementation
@@ -135,21 +154,65 @@ builder.Services.AddCors(options =>
 
 //Logger configs to remove unwanted providers and only add a console for logging
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.Logging.AddSimpleConsole(options =>
+options.IncludeScopes = true);
+
 
 
 var app = builder.Build();
 
 app.UseCors("ReactPolicy");
 
+app.UseMiddleware<CorrelationMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 
-// Configure HTTP request pipeline.
-app.UseHttpsRedirection();
+
+//calls the healthchecks for all when a user hits /heath/ready or live 
+//Liveliness
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+   Predicate = _ => false // Just confirms the process is responding and ignore background things
+});
+
+//Readiness
+app.MapHealthChecks("/health/ready", new HealthCheckOptions 
+{
+    Predicate = check => check.Tags.Contains("ready"), //Execute only the infrastruture with tags as ready
+    ResponseWriter = async (context, report) => //.NET simply returns HEalthy or Unhealthy, so we overwrite it to get a more detailed response
+    {
+        context.Response.ContentType = "application/json";
+        //It takes the response of all 4 checks and creates a integrated report
+        var payload = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+                // Safe boundary: Exception details are excluded to prevent data leaks
+            })
+        };
+
+        var jsonResponse = JsonSerializer.Serialize(payload, new JsonSerializerOptions 
+        { 
+            WriteIndented = true 
+        });
+
+        await context.Response.WriteAsync(jsonResponse);
+    }
+});
+
+// Configure HTTP request pipeline only during production.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+    
 
 // Generate OpenAPI document
 app.UseOpenApi();

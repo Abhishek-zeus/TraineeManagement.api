@@ -1,0 +1,38 @@
+# Stage 1 : Runtime
+FROM docker-registry-002.zeuslearning.com/zeuslearning/dotnet/aspnet:10.0-alpine AS base
+ 
+WORKDIR /app
+ 
+# Stage 2 : Build
+FROM docker-registry-002.zeuslearning.com/zeuslearning/dotnet/sdk:10.0-alpine AS build
+ 
+WORKDIR /src
+COPY NuGet.Config /root/.nuget/NuGet/NuGet.Config
+
+# Copy project file
+COPY SubmissionProcessor.Worker/SubmissionProcessor.Worker.csproj SubmissionProcessor.Worker/
+ 
+# Restore packages
+RUN dotnet restore SubmissionProcessor.Worker/SubmissionProcessor.Worker.csproj
+ 
+# Copy source
+COPY . .
+ 
+# Build
+WORKDIR /src/SubmissionProcessor.Worker
+ 
+RUN dotnet build SubmissionProcessor.Worker.csproj -c Release -o /app/build
+ 
+# Stage 3 : Publish
+FROM build AS publish
+ 
+RUN dotnet publish SubmissionProcessor.Worker.csproj -c Release -o /app/publish
+ 
+# Stage 4 : Final Runtime
+FROM base AS final
+ 
+WORKDIR /app
+ 
+COPY --from=publish /app/publish .
+ 
+ENTRYPOINT ["dotnet","SubmissionProcessor.Worker.dll"]

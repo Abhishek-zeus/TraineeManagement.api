@@ -6,8 +6,12 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
-app.Urls.Add("http://localhost:5050");
+
+app.MapHealthChecks("/health/live");
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

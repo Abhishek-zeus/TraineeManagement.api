@@ -118,5 +118,9 @@ namespace TraineeManagement.myapp.Services
             _channel?.Close();
             _connection?.Close();
         }
+
+
+        public bool IsConnected() =>
+        _connection?.IsOpen ?? false;
     }
 }

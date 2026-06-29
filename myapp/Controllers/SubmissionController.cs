@@ -75,8 +75,8 @@ namespace TraineeManagement.myapp.Controllers
             {
                 var response = await _submissionFileService.UploadFileAsync(submissionId, file, uploadedByUserId, cancellationToken);
 
-                //Generate a unique Correlation Tracking string
-                var correlationId = Guid.NewGuid().ToString();
+                //Take or Generate a unique Correlation Tracking string
+                var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? Guid.NewGuid().ToString();
 
                 //Assemble our message package
                 var queueMessage = new SubmissionProcessingRequest

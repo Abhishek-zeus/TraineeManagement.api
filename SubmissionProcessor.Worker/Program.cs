@@ -68,7 +68,7 @@ builder.Services.AddHttpClient<ITrainingDirectoryClient, TrainingDirectoryClient
 
 //Logger configs to remove unwanted providers and only add a console for logging
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.Logging.AddSimpleConsole(options => options.IncludeScopes = true);
 
 // 🚀 ADD THIS LINE TO FORCE INFORMATION LOGS TO SHOW:
 builder.Logging.SetMinimumLevel(LogLevel.Information);

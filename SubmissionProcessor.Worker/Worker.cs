@@ -17,19 +17,21 @@ namespace TraineeManagement.SubmissionProcessor.Worker;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
+    private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _scopeFactory;
     //Singleton = Created once for entire life of appl, Scoped = A new instance created for each task
     //Used for connecting singleton services wth scoped services
     private IConnection _connection = null!;
     private readonly int _maxAttempts;
     private IModel _channel = null!;
-    private const string QueueName = "submission-processing";
-    private const string DeadLetterExchange = "submission-processing.dlx";
-    private const string FailedQueueName = "submission-processing-failed";
+    // private const string queueName = "submission-processing";
+    // private const string DeadLetterExchange = "submission-processing.dlx";
+    // private const string FailedqueueName = "submission-processing-failed";
 
-    public Worker(ILogger<Worker> logger, IServiceScopeFactory serviceScopeFactory, IOptions<ProcessingSettings> processingOptions)
+    public Worker(ILogger<Worker> logger, IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, IOptions<ProcessingSettings> processingOptions)
     {
         _logger = logger;
+        _configuration = configuration;
         _scopeFactory = serviceScopeFactory;
         _maxAttempts = processingOptions.Value.MaxAttempts;
         _logger.LogInformation("Inside worker");
@@ -38,9 +40,16 @@ public class Worker : BackgroundService
 
     private void InitializeRabbitMq()
     {
+        var hostName = _configuration["RabbitMQ:HostName"] ?? "localhost";
+        var queueName = _configuration["RabbitMQ:QueueName"] ?? "submission-processing";
+        var dlxExchange = _configuration["RabbitMQ:DeadLetterExchange"] ?? "submission-processing.dlx";
+        var failedQueue = _configuration["RabbitMQ:FailedQueueName"] ?? "submission-processing-failed";
+
+
+
         var factory = new ConnectionFactory
         {
-            HostName = "localhost",
+            HostName = hostName,
             DispatchConsumersAsync = true
         };
         _connection = factory.CreateConnection();
@@ -48,7 +57,7 @@ public class Worker : BackgroundService
 
         //step3a: DeadLetterExchange
         _channel.ExchangeDeclare(
-                exchange: DeadLetterExchange,
+                exchange: dlxExchange,
                 type: ExchangeType.Direct,
                 durable: true,
                 autoDelete: false
@@ -56,7 +65,7 @@ public class Worker : BackgroundService
 
         //step3b: the failed queue
         _channel.QueueDeclare(
-            queue: FailedQueueName,
+            queue: failedQueue,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -64,19 +73,19 @@ public class Worker : BackgroundService
         );
 
         _channel.QueueBind(
-            queue: FailedQueueName,
-            exchange: DeadLetterExchange,
-            routingKey: QueueName
+            queue: failedQueue,
+            exchange: dlxExchange,
+            routingKey: queueName
         );
 
         //step3c: the main queue
         var mainQueueArgs = new Dictionary<string, object>
             {
-                {"x-dead-letter-exchange", DeadLetterExchange}
+                {"x-dead-letter-exchange", dlxExchange}
             };
 
         _channel.QueueDeclare(
-            queue: QueueName,
+            queue: queueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -153,103 +162,110 @@ public class Worker : BackgroundService
                 job.StartedDate ??= DateTime.UtcNow;
                 await dbContext.SaveChangesAsync(stoppingToken);
 
-                try
+
+
+                //logger Scoped it for a CorrelationId 
+                using (_logger.BeginScope("----- CorrelationId : {CorrelationId}", job.CorrelationId))
                 {
-                    var submissionFile = await dbContext.SubmissionFiles.FirstOrDefaultAsync(f =>
-                        f.Id == message.FileId, stoppingToken);
-                    if (submissionFile == null)
+                    try
                     {
-                        throw new PermanentProcessingException($"SubmissionFile {message.FileId} notfound.");
-                    }
-
-                    //deliberate test hooks
-                    if (submissionFile.OriginalFileName.Contains("simulate-permanent-failure"))
-                    {
-                        throw new PermanentProcessingException("Simulated permanent failure (test file name marker).");
-                    }
-                    if (submissionFile.OriginalFileName.Contains("simulate-transient-failure") && job.Attempts < _maxAttempts)
-                    {
-                        throw new TransientProcessingException($"Simulated transient failure (attempt {job.Attempts} of {_maxAttempts}).");
-                    }
-
-                    //-------REAL SIMULATED PROCESSING OF CHECKSUM----------
-                    using var fileStream = await fileStorage.OpenReadAsync(submissionFile.StorageName, stoppingToken);
-                    var recomputedHashBytes = await SHA256.HashDataAsync(fileStream, stoppingToken);
-                    var recomputedHash = Convert.ToHexString(recomputedHashBytes).ToLowerInvariant();
-
-                    if (recomputedHash != submissionFile.CheckSum)
-                    {
-                        _logger.LogWarning("Checksum mismatch for FileId: {FileId}. Stored: {Stored}, Recomputed: {Recomputed}", submissionFile.Id, submissionFile.CheckSum, recomputedHash);
-                    }
-
-
-                    //New in Day 5: Look up the trainee via directory service
-                    var directoryClient = scope.ServiceProvider.GetRequiredService<ITrainingDirectoryClient>();
-                    var submission = await dbContext.Submissions.FirstOrDefaultAsync(s => s.Id == message.SubmissionId, stoppingToken); //I have submission -> taskAssignmentId now 
-                    if(submission != null)
-                    {
-                        var assignment = await dbContext.TaskAssignments.FirstOrDefaultAsync(a => a.Id == submission.TaskAssignmentId, stoppingToken); // now i have the taskAssignment -> traineeId
-                        if(assignment != null)
+                        var submissionFile = await dbContext.SubmissionFiles.FirstOrDefaultAsync(f =>
+                            f.Id == message.FileId, stoppingToken);
+                        if (submissionFile == null)
                         {
-                            try
-                            {
-                                var profile = await directoryClient.GetTraineeProfileAsync(assignment.TraineeId, job.CorrelationId, stoppingToken);
-
-                                if(profile != null)
-                                {
-                                    _logger.LogInformation("Trainee profile retrieved. TraineeId: {TraineeId}, Name: {FullName}, CorrelationId: {CorrelationId}", profile.TraineeId, profile.FullName, job.CorrelationId);
-                                }
-                                else
-                                {
-                                    _logger.LogWarning("Trainee {TraineeId} not found in directory service. Continuing without profile data.", assignment.TraineeId);
-                                }
-                            }
-                            catch(Exception ex)
-                            {
-                                //FallBack behaviour --Polly will handle it
-                                _logger.LogWarning(ex,"Directory service unavailable for TraineeId:{TraineeId}. Proceeding without profile data. JobId: {JobId}", assignment.TraineeId, job.Id);
-                            }
-                            
+                            throw new PermanentProcessingException($"SubmissionFile {message.FileId} notfound.");
                         }
-                    
+
+                        //deliberate test hooks
+                        if (submissionFile.OriginalFileName.Contains("simulate-permanent-failure"))
+                        {
+                            throw new PermanentProcessingException("Simulated permanent failure (test file name marker).");
+                        }
+                        if (submissionFile.OriginalFileName.Contains("simulate-transient-failure") && job.Attempts < _maxAttempts)
+                        {
+                            throw new TransientProcessingException($"Simulated transient failure (attempt {job.Attempts} of {_maxAttempts}).");
+                        }
+
+                        //-------REAL SIMULATED PROCESSING OF CHECKSUM----------
+                        using var fileStream = await fileStorage.OpenReadAsync(submissionFile.StorageName, stoppingToken);
+                        var recomputedHashBytes = await SHA256.HashDataAsync(fileStream, stoppingToken);
+                        var recomputedHash = Convert.ToHexString(recomputedHashBytes).ToLowerInvariant();
+
+                        if (recomputedHash != submissionFile.CheckSum)
+                        {
+                            _logger.LogWarning("Checksum mismatch for FileId: {FileId}. Stored: {Stored}, Recomputed: {Recomputed}", submissionFile.Id, submissionFile.CheckSum, recomputedHash);
+                        }
+
+
+                        //New in Day 5: Look up the trainee via directory service
+                        var directoryClient = scope.ServiceProvider.GetRequiredService<ITrainingDirectoryClient>();
+                        var submission = await dbContext.Submissions.FirstOrDefaultAsync(s => s.Id == message.SubmissionId, stoppingToken); //I have submission -> taskAssignmentId now 
+                        if (submission != null)
+                        {
+                            var assignment = await dbContext.TaskAssignments.FirstOrDefaultAsync(a => a.Id == submission.TaskAssignmentId, stoppingToken); // now i have the taskAssignment -> traineeId
+                            if (assignment != null)
+                            {
+                                try
+                                {
+                                    var profile = await directoryClient.GetTraineeProfileAsync(assignment.TraineeId, job.CorrelationId, stoppingToken);
+
+                                    if (profile != null)
+                                    {
+                                        _logger.LogInformation("Trainee profile retrieved. TraineeId: {TraineeId}, Name: {FullName}, CorrelationId: {CorrelationId}", profile.TraineeId, profile.FullName, job.CorrelationId);
+                                    }
+                                    else
+                                    {
+                                        _logger.LogWarning("Trainee {TraineeId} not found in directory service. Continuing without profile data.", assignment.TraineeId);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    //FallBack behaviour --Polly will handle it
+                                    _logger.LogWarning(ex, "Directory service unavailable for TraineeId:{TraineeId}. Proceeding without profile data. JobId: {JobId}", assignment.TraineeId, job.Id);
+                                }
+
+                            }
+
+                        }
+
+
+                        job.Status = ProcessingJobStatus.Completed;
+                        job.CompletedDate = DateTime.UtcNow;
+                        job.ErrorSummary = null;
+                        await dbContext.SaveChangesAsync(stoppingToken);
+                        _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                        _logger.LogInformation("Job Completed. JobId: {JobId}, FileId: {FileId}, Attempts: {Attempts}", job.Id, job.FileId, job.Attempts);
                     }
-
-
-                    job.Status = ProcessingJobStatus.Completed;
-                    job.CompletedDate = DateTime.UtcNow;
-                    job.ErrorSummary = null;
-                    await dbContext.SaveChangesAsync(stoppingToken);
-                    _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
-                    _logger.LogInformation("Job Completed. JobId: {JobId}, FileId: {FileId}, Attempts: {Attempts}", job.Id, job.FileId, job.Attempts);
-                }
-                catch (PermanentProcessingException ex)
-                {
-                    _logger.LogError("Permanent failure — routing straight to dead-letter without retry. JobId: {JobId}, Error: {Error}", job.Id, ex.Message);
-                    job.Status = ProcessingJobStatus.Failed;
-                    job.ErrorSummary = ex.Message;
-                    job.CompletedDate = DateTime.UtcNow;
-                    await dbContext.SaveChangesAsync(stoppingToken);
-                    _channel.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: false);
-                }
-                catch (Exception ex) //Transient or any unclassified exception : safer to retry
-                {
-                    job.ErrorSummary = ex.Message;
-                    if (job.Attempts >= _maxAttempts) //If attempts exhausted, go to deadlock with requeue: false
+                    catch (PermanentProcessingException ex)
                     {
-                        _logger.LogError("Job exhausted retries ({Attempts}/{Max}). Routing to dead-letter. JobId: {JobId}", job.Attempts, _maxAttempts, job.Id);
+                        _logger.LogError("Permanent failure — routing straight to dead-letter without retry. JobId: {JobId}, Error: {Error}", job.Id, ex.Message);
                         job.Status = ProcessingJobStatus.Failed;
+                        job.ErrorSummary = ex.Message;
                         job.CompletedDate = DateTime.UtcNow;
                         await dbContext.SaveChangesAsync(stoppingToken);
                         _channel.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: false);
                     }
-                    else    //if attempts are left, retry with requeue: true
+                    catch (Exception ex) //Transient or any unclassified exception : safer to retry
                     {
-                        _logger.LogError("Transient failure on attempt {Attempts}/{Max}. Will retry. JobId: {JobId}, Error: {Error}", job.Attempts, _maxAttempts, job.Id, ex.Message);
-                        job.Status = ProcessingJobStatus.Queued;
-                        await dbContext.SaveChangesAsync(stoppingToken);
-                        _channel.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: true);
+                        job.ErrorSummary = ex.Message;
+                        if (job.Attempts >= _maxAttempts) //If attempts exhausted, go to deadlock with requeue: false
+                        {
+                            _logger.LogError("Job exhausted retries ({Attempts}/{Max}). Routing to dead-letter. JobId: {JobId}", job.Attempts, _maxAttempts, job.Id);
+                            job.Status = ProcessingJobStatus.Failed;
+                            job.CompletedDate = DateTime.UtcNow;
+                            await dbContext.SaveChangesAsync(stoppingToken);
+                            _channel.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: false);
+                        }
+                        else    //if attempts are left, retry with requeue: true
+                        {
+                            _logger.LogError("Transient failure on attempt {Attempts}/{Max}. Will retry. JobId: {JobId}, Error: {Error}", job.Attempts, _maxAttempts, job.Id, ex.Message);
+                            job.Status = ProcessingJobStatus.Queued;
+                            await dbContext.SaveChangesAsync(stoppingToken);
+                            _channel.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: true);
+                        }
                     }
                 }
+
             }
             catch (Exception globalEx)
             {
@@ -260,7 +276,7 @@ public class Worker : BackgroundService
         };
 
         //Send the next task from the queue to my listener, i am ready
-        _channel.BasicConsume(queue: QueueName, autoAck: false, consumer: consumer);
+        _channel.BasicConsume(queue: _configuration["RabbitMQ:QueueName"] ?? "submission-processing", autoAck: false, consumer: consumer);
 
         return Task.CompletedTask;
     }
