@@ -1,3 +1,4 @@
+```mermaid
 flowchart TB
     Client["Client (Postman / Swagger / Frontend)"]
 
@@ -24,3 +25,5 @@ flowchart TB
     Worker -->|HTTP GET, resilience pipeline| Directory
     API -.->|Correlation ID propagated| Worker
     Worker -.->|Correlation ID propagated| Directory
+
+```
