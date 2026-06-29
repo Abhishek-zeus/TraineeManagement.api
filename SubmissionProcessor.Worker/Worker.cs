@@ -164,6 +164,7 @@ public class Worker : BackgroundService
 
 
 
+
                 //logger Scoped it for a CorrelationId 
                 using (_logger.BeginScope("----- CorrelationId : {CorrelationId}", job.CorrelationId))
                 {
@@ -177,6 +178,13 @@ public class Worker : BackgroundService
                         }
 
                         //deliberate test hooks
+
+                        //Window to kill th worker process mid way
+                        if (SubmissionFile != null && SubmissionFile.OriginalFileName.Contains("simulate-slow-processing-demo"))
+                        {
+                            _logger.LogInformation("Simulating slow processing (8 seconds window to test a Worker crash)");
+                            await Task.Delay(8000, stoppingToken);
+                        }
                         if (submissionFile.OriginalFileName.Contains("simulate-permanent-failure"))
                         {
                             throw new PermanentProcessingException("Simulated permanent failure (test file name marker).");
