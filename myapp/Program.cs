@@ -14,6 +14,7 @@ using DotNetEnv;
 using TraineeManagement.myapp.Middleware;
 using TraineeManagement.myapp.HealthChecks;
 using TraineeManagement.myapp.Controllers;
+using TraineeManagement.myapp.Enums;
 
 Env.Load(); // Loads the .env file into environment variables for Jwt
 var builder = WebApplication.CreateBuilder(args);
@@ -113,10 +114,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role, 
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
         };
     }
+);
+
+//Adding Authorization Policies
+builder.Services.AddAuthorization(options =>
+{
+    //Admin and Mentor can manage Learning Tasks, but the Trainee can only view them
+    options.AddPolicy("CanManageTasks", policy => policy.RequireRole("Admin","Mentor"));
+
+    //Only Trainees can submit / delete assignments
+    options.AddPolicy("canManageAssignment", policy => policy.RequireRole("Trainee"));
+
+    //Admins and Mentors can view submissions, Trainees can view their own
+    //(we allow all three roles to pass the initial gate)
+    options.AddPolicy("canViewSubmissions", policy => policy.RequireRole("Admin","Mentor","Trainee"));
+
+    //Only Admins can register new Trainess and Mentors
+    options.AddPolicy("canManageProfiles", policy => policy.RequireRole("Admin"));   
+
+    //Mentors can create reviews, everyone can view them
+    options.AddPolicy("CanWriteReviews", policy => policy.RequireRole("Mentor"));
+
+    //Mentors can assign tasks, everyone else can only view them
+    options.AddPolicy("CanAssignTasks", policy => policy.RequireRole("Mentor"));
+
+}
 );
 
 

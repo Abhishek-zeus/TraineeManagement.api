@@ -1,4 +1,5 @@
 using TraineeManagement.myapp.Models;
+using TraineeManagement.myapp.Exceptions;
 
 namespace TraineeManagement.myapp.Utility
 {
@@ -45,6 +46,13 @@ namespace TraineeManagement.myapp.Utility
                 _logger.LogWarning(ex, "Validation failure caught in service layer.");
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 await context.Response.WriteAsJsonAsync(new { message = ex.Message });
+            }
+            catch(BusinessValidationException ex)
+            {
+                //custom exception is used so that no unauthorised person can signup as trainee or mentor
+                _logger.LogWarning(ex, "Business rule Validation failed");
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new {message = ex.Message});
             }
             catch (Exception ex)
             {

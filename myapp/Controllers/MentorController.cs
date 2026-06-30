@@ -7,7 +7,6 @@ using TraineeManagement.myapp.Interfaces;
 
 namespace TraineeManagement.myapp.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/mentor/[controller]")]
     public class MentorController : ControllerBase
@@ -19,6 +18,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<List<RegisterMentorRequest>>> GetMentors()
         {
             List<RegisterMentorRequest> mentors = await _service.GetMentors();
@@ -30,6 +30,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<RegisterMentorRequest>> GetById(int id)
         {
             var mentor = await _service.GetById(id);
@@ -41,6 +42,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "canManageProfiles")] //Only Admin access
         public async Task<ActionResult<RegisterMentorRequest>> RegisterMentor(RegisterMentorRequest request)
         {
             var mentor = await _service.RegisterMentor(request);
@@ -50,6 +52,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpPut]
+        [Authorize(Policy = "canManageProfiles")] //Only Admin access
         public async Task<ActionResult<RegisterMentorRequest>> UpdateMentor(int id, RegisterMentorRequest request)
         {
             var mentor = _service.UpdateMentor(id, request);
@@ -61,6 +64,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "canManageProfiles")] //Only Admin access
         public async Task<ActionResult<bool>> DeleteMentor(int id)
         {
             var mentor = _service.DeleteMentor(id);

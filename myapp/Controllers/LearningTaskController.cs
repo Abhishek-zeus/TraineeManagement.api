@@ -3,11 +3,11 @@ using TraineeManagement.myapp.DTOs;
 using TraineeManagement.myapp.DTOs.LearningTask_DTO;
 using Microsoft.AspNetCore.Authorization;
 using TraineeManagement.myapp.Interfaces;
+using TraineeManagement.myapp.Enums;
 using TraineeManagement.myapp.Services;
 
 namespace TraineeManagement.myapp.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/learningTask/[controller]")]
     public class LearningTaskController : ControllerBase
@@ -19,6 +19,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet]
+        [Authorize] //Everyone logged in can view
         public async Task<ActionResult<List<CreateTaskRequest>>> GetLearningTasks()
         {
             List<CreateTaskRequest> tasks = await _service.GetLearningTasks();
@@ -30,6 +31,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize] //Everyone logged in can view
         public async Task<ActionResult<CreateTaskRequest>> GetById(int id)
         {
             var task = await _service.GetById(id);
@@ -41,6 +43,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Mentor")] // only Mentors can access
         public async Task<ActionResult<CreateTaskRequest>> RegisterTask(CreateTaskRequest request)
         {
             var task = await _service.RegisterTask(request);
@@ -50,6 +53,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpPut]
+        [Authorize(Roles = "Mentor")] // only Mentors can access
         public async Task<ActionResult<CreateTaskRequest>> UpdateTask(int id, CreateTaskRequest request)
         {
             var task = _service.UpdateTask(id, request);
@@ -63,6 +67,7 @@ namespace TraineeManagement.myapp.Controllers
 
         //Returning IActionResult explicitly for DeletTask as it also returns NoContent()
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Mentor")] // only Mentors can access
         public async Task<ActionResult<bool>> DeleteTask(int id)
         {
             var task = _service.DeleteTask(id);

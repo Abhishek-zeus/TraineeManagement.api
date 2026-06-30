@@ -21,6 +21,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "CanAssignTasks")] // Strictly limits this endpoint to Mentors
         public async Task<ActionResult<CreateTaskAssignmentRequest>> AssignTask(CreateTaskAssignmentRequest request)
         {
             var assignedTask = await _service.AssignTask(request);

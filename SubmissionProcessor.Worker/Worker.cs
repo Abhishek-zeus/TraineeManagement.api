@@ -180,7 +180,7 @@ public class Worker : BackgroundService
                         //deliberate test hooks
 
                         //Window to kill th worker process mid way
-                        if (SubmissionFile != null && SubmissionFile.OriginalFileName.Contains("simulate-slow-processing-demo"))
+                        if (submissionFile != null && submissionFile.OriginalFileName.Contains("simulate-slow-processing-demo"))
                         {
                             _logger.LogInformation("Simulating slow processing (8 seconds window to test a Worker crash)");
                             await Task.Delay(8000, stoppingToken);

@@ -23,6 +23,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = "CanViewSubmissions")] // Admin, Mentor, Trainee can hit this
         public async Task<ActionResult<SubmissionFileResponse>> GetFileMetadata(int id)
         {
             var metadata = await _submissionFileService.GetFileMetadataAsync(id);
@@ -34,6 +35,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet("{id}/download")]
+        [Authorize(Policy = "CanViewSubmissions")] // Admin, Mentor, Trainee can hit this
         public async Task<IActionResult> DownloadFile(int id, CancellationToken cancellationToken)
         {
             try
@@ -52,6 +54,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "CanManageAssignments")] // Only Trainees can delete
         public async Task<IActionResult> DeleteFile(int id, CancellationToken cancellationToken)
         {
             try

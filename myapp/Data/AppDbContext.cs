@@ -1,7 +1,9 @@
 //Similar to Repo layer in Java (Spring data JPA that automates all the database operations)
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using myapp.Migrations;
+using TraineeManagement.myapp.Enums;
 using TraineeManagement.myapp.Models;
 
 /*
@@ -60,7 +62,7 @@ namespace TraineeManagement.myapp.Data
             {
                 // Unique constraint on Username/Email
                 entity.HasIndex(u => u.Username).IsUnique();
-
+                entity.Property(u => u.Role).HasConversion<string>(); 
                 entity.Property(u => u.Username).IsRequired().HasMaxLength(50);
                 entity.Property(u => u.PasswordHash).IsRequired().HasMaxLength(255);
             });
@@ -135,6 +137,20 @@ namespace TraineeManagement.myapp.Data
             modelBuilder.Entity<ProcessingJob>()
             .Property(p => p.Status)
             .HasConversion<string>();
+
+
+            //DATA SEEDING for an INITIAL ADMIN
+            var adminUser = new User
+            {
+                id = 1,
+                Username = "super_admin",
+                Email = "admin@company.com",
+                Role = UserRole.Admin
+            } ;
+            var hasher = new PasswordHasher<User>();
+            adminUser.PasswordHash = hasher.HashPassword(adminUser,"AdminSecurePassword");
+            //It checks if the database has the entry with id 1, if not then it seeds a adminUser
+            modelBuilder.Entity<User>().HasData(adminUser);
         }
 
     }

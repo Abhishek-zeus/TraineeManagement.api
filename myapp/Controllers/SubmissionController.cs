@@ -11,7 +11,6 @@ using TraineeManagement.myapp.Mappers;
 
 namespace TraineeManagement.myapp.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/submissions/[controller]")]
     public class SubmissionController : ControllerBase
@@ -29,6 +28,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "CanManageAssignments")] // Only Trainees can upload
         public async Task<ActionResult<CreateSubmissionRequest>> SubmitTask(CreateSubmissionRequest request)
         {
             var submittedTask = await _service.SubmitTask(request);
@@ -36,6 +36,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "CanViewSubmissions")] // Admin, Mentor, Trainee can hit this
         public async Task<ActionResult<List<CreateSubmissionRequest>>> GetSubmissions()
         {
             List<CreateSubmissionRequest> submittedTask = await _service.GetSubmissions();
@@ -47,6 +48,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = "CanViewSubmissions")] // Admin, Mentor, Trainee can hit this
         public async Task<ActionResult<CreateSubmissionRequest>> GetById(int id)
         {
             var submittedTask = await _service.GetById(id);
@@ -59,6 +61,7 @@ namespace TraineeManagement.myapp.Controllers
 
 
         [HttpPost("{submissionId}/files")]
+        [Authorize(Policy = "CanManageAssignments")] // Only Trainees can upload
         [RequestSizeLimit(10485760)]    //checks combined size of file, headers and form text fields
         [RequestFormLimits(MultipartBodyLengthLimit = 10485760)]    //specific boundary for the file body
         public async Task<ActionResult<SubmissionFileResponse>> UploadFile(int submissionId, IFormFile file, CancellationToken cancellationToken)
@@ -125,6 +128,7 @@ namespace TraineeManagement.myapp.Controllers
 
 
         [HttpGet("{id}/summary")]
+        [Authorize] //Everyone logged in can view
         public async Task<ActionResult<SubmissionSummaryResponse>> GetSummary(int id, CancellationToken cancellationToken)
         {
             var summary = await _service.GetSummaryAsync(id, cancellationToken);

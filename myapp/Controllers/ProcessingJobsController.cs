@@ -8,7 +8,7 @@ namespace TraineeManagement.myapp.Controllers
 {
     [ApiController]
     [Route("api/processing-jobs")]
-    [Authorize]
+    [Authorize(Roles = "Admin,Trainee")] // Restricts the entire controller; Mentors get a 403 Forbidden automatically
     public class ProcessingJobController : ControllerBase
     {
         private readonly IProcessingJobService _jobService;

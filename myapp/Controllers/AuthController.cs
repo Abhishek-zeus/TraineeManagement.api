@@ -2,10 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using TraineeManagement.myapp.Models;
 using TraineeManagement.myapp.Services;
 using TraineeManagement.myapp.Interfaces;
+using TraineeManagement.myapp.Enums;
 using TraineeManagement.myapp.DTOs;
 
 
-namespace TraineeManagement.myapp.Controllers 
+namespace TraineeManagement.myapp.Controllers
 {
     [ApiController]
     [Route("api/auth/[controller]")]
@@ -21,20 +22,20 @@ namespace TraineeManagement.myapp.Controllers
         public async Task<ActionResult<UserResponse>> RegisterUser(CreateUserRequest request)
         {
             var user = await _service.RegisterUser(request);
-            if(user == null)
+            if (user == null)
             {
                 return Conflict("A user with this Username/email already exists."); //409
             }
-            return Created(user.username,user);
+            return Created(user.username, user);
         }
 
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponse>> LoginUser(LoginRequest request)
         {
             var user = await _service.LoginUser(request);
-            if(user == null)
+            if (user == null)
             {
-                return Unauthorized(new {message="Username/Password is Invalid"});
+                return Unauthorized(new { message = "Username/Password is Invalid" });
             }
             return Ok(user);
         }
@@ -43,9 +44,9 @@ namespace TraineeManagement.myapp.Controllers
         public async Task<ActionResult<List<User>>> GetAll()
         {
             List<User> users = await _service.GetAll();
-            if(users.Count == 0)
+            if (users.Count == 0)
             {
-                return Ok(new {message="No User Found"});
+                return Ok(new { message = "No User Found" });
             }
             return Ok(users);
         }

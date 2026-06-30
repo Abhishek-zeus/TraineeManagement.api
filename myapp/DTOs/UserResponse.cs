@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TraineeManagement.myapp.Enums;
 
 namespace TraineeManagement.myapp.DTOs
 {
@@ -9,6 +10,6 @@ namespace TraineeManagement.myapp.DTOs
         [Required]
         public String username{get;set;}
         [Required]
-        public String role {get;set;}
+        public UserRole role {get;set;}
     }
 }

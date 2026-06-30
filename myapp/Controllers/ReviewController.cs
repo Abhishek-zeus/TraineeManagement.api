@@ -21,6 +21,7 @@ namespace TraineeManagement.myapp.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "CanWriteReviews")] // Strictly limits this endpoint to Mentors
         public async Task<ActionResult<CreateReviewRequest>> ReviewTask(CreateReviewRequest request)
         {
             var reviewedTask = await _service.ReviewTask(request);

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TraineeManagement.myapp.Enums;
 using TraineeManagement.myapp.Models;
 
 namespace TraineeManagement.myapp.DTOs
@@ -19,7 +20,6 @@ namespace TraineeManagement.myapp.DTOs
         public String Password{get;set;}
 
         [Required(ErrorMessage="Role is Required")]
-        [MaxLength(50)]
-        public String Role{get;set;}
+        public UserRole Role{get;set;}
     }
 }

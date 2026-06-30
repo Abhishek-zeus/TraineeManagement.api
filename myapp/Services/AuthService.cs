@@ -4,6 +4,7 @@ using TraineeManagement.myapp.DTOs;
 using System.Text;
 using System.Security.Claims;       
 using Microsoft.IdentityModel.Tokens;
+using TraineeManagement.myapp.Exceptions;
 using TraineeManagement.myapp.Utility;
 using TraineeManagement.myapp.Data;
 using TraineeManagement.myapp.Interfaces;
@@ -11,6 +12,7 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.EntityFrameworkCore;
 using TraineeManagement.myapp.Mappers;
 using TraineeManagement.myapp.Utility;
+using TraineeManagement.myapp.Enums;
 
 namespace TraineeManagement.myapp.Services
 {
@@ -33,12 +35,35 @@ namespace TraineeManagement.myapp.Services
 
         public async Task<UserResponse> RegisterUser(CreateUserRequest request)
         {
+            if(request.Role == UserRole.Admin)
+            {
+                //Exception instantly stops execution of method
+                throw new BusinessValidationException("An Admin account cannot be created through public registration.");
+            }
+            if(request.Role == UserRole.Trainee)
+            {
+                var traineeExists = await _context.Trainees.AnyAsync(t => t.Email == request.Email);
+                if (!traineeExists)
+                {
+                    throw new BusinessValidationException("Registration failed. No pre-authorized Trainee profile found for this email address.");
+                }
+            }
+            else if (request.Role == UserRole.Mentor)
+            {
+                var mentorExists = await _context.Mentors.AnyAsync(m => m.Email == request.Email);
+                if (!mentorExists)
+                {
+                    throw new BusinessValidationException("Registration failed. No pre-authorized Mentor profile found for this email address.");
+                }
+            }
             var user = UserMapper.ToEntity(request);
             var existing = await _context.Users.FirstOrDefaultAsync(u => u.Username == user.Username || u.Email == user.Email);
             if(existing != null)
             {
                 return null;
             }
+
+
             var hasher = new PasswordHasher<User>();
             String hashedPassword = hasher.HashPassword(user,request.Password);
             user.PasswordHash = hashedPassword;

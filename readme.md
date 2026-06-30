@@ -439,27 +439,67 @@ Sample GET /api/reviews/{1} response:
 - Login using Username and password
 
 ## Design Decisions
-# Caching Strategy (Redis)
+### Caching Strategy (Redis)
 - Cache Keys (`trainee:{id}`, `submission-summary:{id}`): Predictable, greppable, and uniform convention for all entities.
 - Cache TTL (Trainee: 120s | Submission: 60s): Trainee data changes rarely; submission status changes rapidly during active processing.
 - Cache Invalidation (`RemoveAsync` on write): Simpler and safer than overwriting; the next read naturally falls back to MySQL and repopulates.
 - Cache Failures (Try/Catch around Redis): Treated as a cache MISS. Caching is a performance optimization, not a hard system dependency.
 
-# Messaging Reliability (RabbitMQ)
+### Messaging Reliability (RabbitMQ)
 - Queue Durability (Durable + Persistent): Ensures both queues and messages survive a Docker or broker restart.
 - Acknowledgement Model (Manual ACK + `prefetchCount: 1`): Prioritises reliability over throughput; never loses work or overloads a worker instance.
 - Retry Limit (`MaxAttempts: 3`): Uses exponential backoff to absorb transient blips without flooding logs on hopeless errors.
 - Dead-Lettering (`x-dead-letter-exchange`): Routes failed messages to a separate queue to provide a physical, inspectable record of dead items.
 
-# Resilience & System Integrity
+### Resilience & System Integrity
 - Idempotency Guard: Checks if `ProcessingJob.Status == "Completed"` before executing work to prevent duplicate side-effects.
 - Message Contract (Plain DTO with `ContractVersion`): Decoupled from EF Core entities so database schemas can evolve without breaking the Worker.
 - HTTP Resilience (2s timeout, 3 retries, Circuit Breaker): Fails fast on broken dependencies instead of hanging or retrying forever.
 - Lookup Failures (Log and Continue): Directory lookup is treated as supplementary, not authoritative for processing success.
 
-# Architecture & Security
+### Architecture & Security
 - DI Scoping (Fresh `IServiceScopeFactory` per message): Prevents a long-lived Singleton Worker from leaking tracked `DbContext` instances.
 - File Naming (Server-generated UUID): Discards client-supplied filenames to close path traversal security vulnerabilities entirely.
+
+## Authorization
+
+### Profile Management (TraineeController & MentorController)
+
+* Admin: YY Can POST (Create new Trainees/Mentors) & YY Can GET (View Profiles).
+* Mentor: XX Can NOT POST | YY Can GET (View Profiles).
+* Trainee: XX Can NOT POST | YY Can GET (View Profiles).
+
+### Course Material (LearningTaskController)
+
+* Admin: XX Can NOT POST | YY Can GET (Browse tasks).
+* Mentor: YY Can POST (Create/Publish tasks) & YY Can GET (Browse tasks).
+* Trainee: XX Can NOT POST | YY Can GET (Watch/View assigned tasks).
+
+### Assignments (SubmissionController & SubmissionFilesController)
+
+* Admin: XX Can NOT POST | YY Can GET (Review all student uploads).
+* Mentor: XX Can NOT POST | YY Can GET (Review all student uploads).
+* Trainee: YY Can POST (Upload files & work) & YY Can GET (View their own submissions).
+
+### Workflow Distribution (TaskAssignmentController)
+
+* Admin: XX Can NOT POST | YY Can GET (Audit active assignments).
+* Mentor: YY Can POST (Assign tasks to Trainees) & YY Can GET (Track assignments).
+* Trainee: XX Can NOT POST | YY Can GET (See what tasks they must do).
+
+### Background Pipelines (ProcessingJobController)
+
+* Admin: YY Can GET (Check system queues and backend worker status).
+* Mentor: XX NO ACCESS AT ALL (Automatically blocked with a 403 Forbidden).
+* Trainee: YY Can GET (Check if their uploaded file is still queued or completed).
+
+### Performance Evaluations (ReviewController)
+
+* Admin: XX Can NOT POST | YY Can GET (Read audit reviews).
+* Mentor: YY Can POST (Write performance reviews for trainees) & YY Can GET (Read reviews).
+* Trainee: XX Can NOT POST | YY Can GET (Read feedback given to them).
+
+
 
 ## Known Limitations
 - Scalability

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TraineeManagement.myapp.Data;
 
@@ -10,9 +11,11 @@ using TraineeManagement.myapp.Data;
 namespace myapp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260630072638_UpdateUserRoleToEnum")]
+    partial class UpdateUserRoleToEnum
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -369,18 +372,6 @@ namespace myapp.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
-
-                    b.HasData(
-                        new
-                        {
-                            id = 1,
-                            CreatedDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "admin@company.com",
-                            PasswordHash = "AQAAAAIAAYagAAAAEPNoeIrircn+hscrRUCR+3YlB/k19tLoDJP3lf8JnNpFLaJxzS8OBobVzxUs6sGyvQ==",
-                            Role = "Admin",
-                            UpdatedDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Username = "super_admin"
-                        });
                 });
 
             modelBuilder.Entity("TraineeManagement.myapp.Models.Review", b =>
