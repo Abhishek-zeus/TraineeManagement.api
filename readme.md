@@ -25,7 +25,7 @@ flowchart TB
     end
 
     Client -->|JWT Bearer| API
-    API -->|EF Core "(Cache MISS)"| MySQL
+    API -->|EF Core Cache MISS| MySQL
     API -->|GET data From Cache| Redis
     Redis -->|Cache HIT| API
     MySQL -->|Update Cache after MISS| Redis 
