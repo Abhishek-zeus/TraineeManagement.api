@@ -14,30 +14,48 @@ flowchart TB
     Client["Client (Postman / Swagger / Frontend)"]
 
     subgraph Docker ["Docker Compose Network"]
+        direction TB
+        
         API["TraineeManagement.Api (JWT, Upload/Download, Jobs, Cache, Publisher)"]
-        Worker["SubmissionProcessor.Worker (Consumer, Idempotency, Retry, DLX, Directory client)"]
-        Directory["TrainingDirectory.Api (Read only trainee lookup)"]
-        MySQL[("MySQL (Source of truth)")]
-        Redis[("Redis (Cache-aside)")]
-        RabbitMQ{{"RabbitMQ (submission-processing queue)"}}
-        DLX{{"Dead Letter Exchange (submission-processing-failed)"}}
-        Storage[["Shared uploads volume"]]
+        
+        subgraph Messaging ["Messaging & Workers"]
+            RabbitMQ{{"RabbitMQ (submission-processing queue)"}}
+            DLX{{"Dead Letter Exchange (submission-processing-failed)"}}
+            Worker["SubmissionProcessor.Worker (Consumer, Idempotency, Retry, DLX, Directory client)"]
+            Directory["TrainingDirectory.Api (Read only trainee lookup)"]
+        end
+
+        subgraph StorageLayer ["Data & Storage"]
+            MySQL[("MySQL (Source of truth)")]
+            Redis[("Redis (Cache-aside)")]
+            Storage[["Shared uploads volume"]]
+        end
     end
 
+    %% Client Routing
     Client -->|JWT Bearer| API
+
+    %% Core API Data Routing
     API -->|EF Core Cache MISS| MySQL
     API -->|GET data From Cache| Redis
     Redis -->|Cache HIT| API
     MySQL -->|Update Cache after MISS| Redis 
-    API -->|Publish SubmissionProcessingRequested| RabbitMQ
     API <-->|Save/serve files| Storage
+
+    %% Async Messaging Pipeline
+    API -->|Publish SubmissionProcessingRequested| RabbitMQ
     RabbitMQ -->|Consume, manual ack| Worker
     RabbitMQ -.->|Exhausted retries / permanent failure| DLX
+
+    %% Worker Operations
     Worker -->|EF Core read/write| MySQL
     Worker <-->|Read file for checksum| Storage
     Worker -->|HTTP GET, resilience pipeline| Directory
+
+    %% Distributed Tracing Traces
     API -.->|Correlation ID propagated| Worker
     Worker -.->|Correlation ID propagated| Directory
+
 
 ```
 ## How to Run
